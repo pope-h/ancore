@@ -99,7 +99,7 @@ export async function sendPayment(
       throw new SimulationFailedError(msg);
     }
     if (msg.includes('expired') || msg.includes('restoration')) {
-      throw new SimulationExpiredError(msg);
+      throw new SimulationExpiredError();
     }
 
     throw new BuilderValidationError(`Failed to build payment transaction: ${msg}`);
