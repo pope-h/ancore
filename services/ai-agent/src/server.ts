@@ -1,4 +1,5 @@
 import express, { Express, Request, Response } from 'express';
+import { intentSchema } from './schemas/intent';
 
 const startTime = Date.now();
 
@@ -26,6 +27,17 @@ export function createApp(): Express {
       service: 'ai-agent',
       version: process.env['SERVICE_VERSION'] ?? '0.1.0',
     });
+  });
+
+  // ── Intent validation ──────────────────────────────────────────────────────
+  // Validates intent payloads against Zod schemas.
+  // No LLM or external service call — purely structural validation.
+  app.post('/v1/intents/validate', (req: Request, res: Response) => {
+    const parsed = intentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ errors: parsed.error.flatten() });
+    }
+    return res.status(200).json({ valid: true, intent: parsed.data });
   });
 
   return app;
