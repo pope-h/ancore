@@ -13,7 +13,10 @@ describe('validateSchedule', () => {
   });
 
   it('accepts a valid schedule', () => {
-    const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16);
+    const future = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const offsetMs = future.getTimezoneOffset() * 60 * 1000;
+    const startAt = new Date(future.getTime() - offsetMs).toISOString().slice(0, 16);
+
     expect(
       validateSchedule({
         frequency: 'weekly',

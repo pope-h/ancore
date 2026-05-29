@@ -52,6 +52,9 @@ export type { IdenticonProps } from './components/Identicon';
 export { Form, FormSubmit, FormError } from './components/Form/Form';
 export type { FormProps, FormSubmitProps, FormErrorProps } from './components/Form/Form';
 
+export { Field } from './components/Form/Field';
+export type { FieldProps } from './components/Form/Field';
+
 export { AddressInput, AddressInputBase } from './components/Form/AddressInput';
 export type { AddressInputProps, AddressInputBaseProps } from './components/Form/AddressInput';
 

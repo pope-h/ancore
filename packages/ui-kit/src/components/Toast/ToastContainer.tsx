@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Toast } from './Toast';
 import type { ToastItem } from './NotificationProvider';
 

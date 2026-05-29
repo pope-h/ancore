@@ -2,7 +2,7 @@
  * StellarClient - Network client for Stellar blockchain interactions
  */
 
-import { rpc as StellarRpc, Horizon } from '@stellar/stellar-sdk';
+import { rpc as StellarRpc, Horizon, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { Transaction } from '@stellar/stellar-sdk';
 import type { Network, NetworkConfig } from '@ancore/types';
 import {
@@ -157,9 +157,13 @@ export class StellarClient {
     return Math.max(this.rpcServers.length, maxRetries + 1);
   }
 
-  private getErrorStatusCode(error: Error): number | undefined {
+  private getErrorStatusCode(error: unknown): number | undefined {
     if (error instanceof NetworkError) {
       return error.statusCode;
+    }
+
+    if (!error || typeof error !== 'object') {
+      return undefined;
     }
 
     if ('statusCode' in error && typeof error.statusCode === 'number') {
@@ -268,11 +272,16 @@ export class StellarClient {
             const account = await this.horizonServer.loadAccount(publicKey);
             return account;
           } catch (error) {
-            if (error instanceof Error && error.message.includes('Not Found')) {
+            const statusCode = this.getErrorStatusCode(error);
+            if (
+              statusCode === 404 ||
+              (error instanceof Error && error.message.includes('Not Found'))
+            ) {
               throw new AccountNotFoundError(publicKey);
             }
             throw new NetworkError('Failed to load account', {
               cause: error instanceof Error ? error : undefined,
+              statusCode,
             });
           }
         },
@@ -286,7 +295,7 @@ export class StellarClient {
       if (error instanceof RetryExhaustedError && error.lastError) {
         if (
           error.lastError instanceof AccountNotFoundError ||
-          error.lastError instanceof NetworkError
+          (error.lastError instanceof NetworkError && error.lastError.statusCode !== 429)
         ) {
           throw error.lastError;
         }
@@ -436,31 +445,23 @@ export class StellarClient {
    * @throws NetworkError if the network request fails
    */
   async submitTransaction(
-    transaction: Transaction
+    transaction: Transaction | string
   ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> {
     try {
       return await withRetry(async () => {
         try {
-          const response = await this.horizonServer.submitTransaction(transaction);
+          const response = await this.horizonServer.submitTransaction(
+            this.resolveSignedTransaction(transaction)
+          );
           return response;
         } catch (error) {
-          if (
-            error &&
-            typeof error === 'object' &&
-            'response' in error &&
-            error.response &&
-            typeof error.response === 'object' &&
-            'data' in error.response
-          ) {
-            const data = error.response.data as {
-              extras?: { result_codes?: { transaction?: string } };
-            };
-            throw new TransactionError('Transaction submission failed', {
-              resultCode: data?.extras?.result_codes?.transaction,
-            });
+          const transactionError = TransactionError.fromHorizonError(error);
+          if (transactionError) {
+            throw transactionError;
           }
           throw new NetworkError('Failed to submit transaction', {
             cause: error instanceof Error ? error : undefined,
+            statusCode: this.getErrorStatusCode(error),
           });
         }
       }, this.retryOptions);
@@ -475,6 +476,14 @@ export class StellarClient {
       }
       throw error;
     }
+  }
+
+  private resolveSignedTransaction(transaction: Transaction | string): Transaction {
+    if (typeof transaction !== 'string') {
+      return transaction;
+    }
+
+    return TransactionBuilder.fromXDR(transaction, this.networkPassphrase) as Transaction;
   }
 
   /**

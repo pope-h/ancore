@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { Button } from './button';
+import { expectNoA11yViolations } from '../../__tests__/test-utils/a11y';
 
 describe('Button', () => {
   it('renders with children text', () => {
@@ -38,5 +39,11 @@ describe('Button', () => {
 
     rerender(<Button size="lg">Large</Button>);
     expect(screen.getByText('Large')).toHaveClass('h-11');
+  });
+
+  it('has no axe violations in the default state', async () => {
+    const { container } = render(<Button>Accessible action</Button>);
+
+    await expectNoA11yViolations(container);
   });
 });

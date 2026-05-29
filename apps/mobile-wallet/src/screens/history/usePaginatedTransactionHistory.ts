@@ -10,8 +10,6 @@ import { detectErrorKind, type HistoryError } from './errorTypes';
 type Options = {
   adapter: TransactionHistoryAdapter;
   pageSize?: number;
-  maxRetries?: number;
-  initialBackoffMs?: number;
 };
 
 type State = {
@@ -25,8 +23,6 @@ type State = {
 };
 
 const DEFAULT_PAGE_SIZE = 20;
-const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_INITIAL_BACKOFF_MS = 1000;
 
 const mergeUniqueTransactions = (
   incoming: Transaction[],
@@ -48,8 +44,6 @@ const mergeUniqueTransactions = (
 export const usePaginatedTransactionHistory = ({
   adapter,
   pageSize = DEFAULT_PAGE_SIZE,
-  _maxRetries = DEFAULT_MAX_RETRIES,
-  _initialBackoffMs = DEFAULT_INITIAL_BACKOFF_MS,
 }: Options) => {
   const [state, setState] = useState<State>({
     items: [],
@@ -62,7 +56,6 @@ export const usePaginatedTransactionHistory = ({
   });
 
   const requestIdRef = useRef(0);
-  const backoffTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>();
 
   const fetchPage = useCallback(
     async ({
@@ -159,15 +152,6 @@ export const usePaginatedTransactionHistory = ({
 
     return fetchPage({ mode, cursor });
   }, [fetchPage, state.items.length, state.nextCursor]);
-
-  // Cleanup backoff timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (backoffTimeoutRef.current) {
-        clearTimeout(backoffTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return useMemo(
     () => ({
