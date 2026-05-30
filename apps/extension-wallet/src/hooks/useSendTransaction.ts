@@ -1,15 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { amountSchema, isStellarAddress, validateAmountPrecision } from '@ancore/ui-kit';
+import {
+  isUsernameHandle,
+  normalizeUsernameHandle,
+  type ResolvedHandle,
+  type ScheduledTransfer,
+  type UsernameHandle,
+} from '@ancore/types';
 import { mapRpcStatus, isTerminalStatus } from '@/utils/transaction-status';
 import { validateTransferNote, truncateTransferNote } from '@/utils/note-validation';
+import type { ScheduleConfig, TransferTiming } from '@/screens/Send/ScheduleControls';
+import { validateSchedule } from '@/utils/schedule-validation';
+import {
+  buildDefaultRelayPayload,
+  DEMO_ACCOUNT_ADDRESS,
+  getExtensionSchedulerClient,
+  toIsoStartAt,
+  type SchedulerClient,
+} from '@/services/scheduler-client';
+import { resolveHandle as defaultResolveHandle } from '@/services/handle-resolver';
 
-export type SendStep = 'form' | 'review' | 'confirm' | 'status';
+export type SendStep = 'form' | 'review' | 'confirm' | 'status' | 'scheduled';
 export type TxStatus = 'idle' | 'pending' | 'confirmed' | 'failed';
 
 export interface SendFormValues {
   to: string;
   amount: string;
   note?: string;
+  timing?: TransferTiming;
+  schedule?: ScheduleConfig;
 }
 
 export interface FeeEstimate {
@@ -22,14 +41,21 @@ export interface SendTransactionDraft extends SendFormValues {
   fee: FeeEstimate;
   total: string;
   truncatedNote?: string;
+  recipientInput?: string;
+  resolvedHandle?: ResolvedHandle;
 }
 
 export interface SendService {
   estimateFee: (input: SendFormValues) => Promise<FeeEstimate>;
   authenticatePassword: (password: string) => Promise<boolean>;
+  resolveHandle?: (handle: UsernameHandle) => Promise<ResolvedHandle | null>;
   signTransaction: (tx: SendTransactionDraft) => Promise<string>;
   submitTransaction: (signedPayload: string) => Promise<{ txId: string }>;
   fetchTransactionStatus: (txId: string) => Promise<TxStatus>;
+  createScheduledTransfer?: (
+    tx: SendTransactionDraft,
+    schedule: ScheduleConfig
+  ) => Promise<ScheduledTransfer>;
 }
 
 export interface UseSendTransactionOptions {
@@ -38,10 +64,13 @@ export interface UseSendTransactionOptions {
   assetDecimals?: number;
   service?: SendService;
   pollIntervalMs?: number;
+  accountAddress?: string;
+  schedulerClient?: SchedulerClient;
 }
 
 export interface ValidationErrors {
   to?: string;
+  handle?: string;
   amount?: string;
   note?: string;
   password?: string;
@@ -51,7 +80,16 @@ export interface ValidationErrors {
 const DEFAULT_BALANCE = 250;
 const DEFAULT_POLL_MS = 1000;
 
-function createDefaultService(): SendService {
+const HANDLE_NOT_FOUND_MESSAGE = 'Handle not found';
+
+function isHandleInput(value: string): boolean {
+  return value.trim().startsWith('@');
+}
+
+function createDefaultService(
+  schedulerClient: SchedulerClient,
+  accountAddress: string
+): SendService {
   return {
     estimateFee: async () => ({
       baseFee: '0.0000100',
@@ -63,15 +101,35 @@ function createDefaultService(): SendService {
       `signed:${tx.to}:${tx.amount}:${Date.now()}`,
     submitTransaction: async () => ({ txId: `tx_${Date.now()}` }),
     fetchTransactionStatus: async () => 'confirmed',
+    resolveHandle: defaultResolveHandle,
+    createScheduledTransfer: async (tx, schedule) =>
+      schedulerClient.createScheduledTransfer({
+        accountAddress,
+        to: tx.to,
+        amount: tx.amount,
+        asset: 'XLM',
+        frequency: schedule.frequency,
+        startAt: toIsoStartAt(schedule.startAt),
+        endAt: schedule.endAt ? toIsoStartAt(schedule.endAt) : undefined,
+        note: tx.truncatedNote,
+        userApproved: true,
+        relayPayload: buildDefaultRelayPayload(tx.to, tx.amount),
+      }),
   };
 }
 
 export function validateRecipientAddress(value: string): string | undefined {
-  if (!value.trim()) {
-    return 'Recipient address is required';
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return 'Recipient address or @username is required';
   }
 
-  if (!isStellarAddress(value.trim())) {
+  if (isHandleInput(trimmed)) {
+    return isUsernameHandle(trimmed) ? undefined : 'Enter a valid @username handle';
+  }
+
+  if (!isStellarAddress(trimmed)) {
     return 'Invalid Stellar address';
   }
 
@@ -103,17 +161,30 @@ export function validateAmount(
   return undefined;
 }
 
+export { validateSchedule } from '@/utils/schedule-validation';
+
 export function useSendTransaction(options: UseSendTransactionOptions = {}) {
   const balance = options.balance ?? DEFAULT_BALANCE;
   const assetDecimals = options.assetDecimals ?? 7;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_MS;
-  const service = useMemo(() => options.service ?? createDefaultService(), [options.service]);
+  const accountAddress = options.accountAddress ?? DEMO_ACCOUNT_ADDRESS;
+  const schedulerClient = useMemo(
+    () => options.schedulerClient ?? getExtensionSchedulerClient(),
+    [options.schedulerClient]
+  );
+  const service = useMemo(
+    () => options.service ?? createDefaultService(schedulerClient, accountAddress),
+    [accountAddress, options.service, schedulerClient]
+  );
 
   const [step, setStep] = useState<SendStep>('form');
   const [status, setStatus] = useState<TxStatus>('idle');
   const [fee, setFee] = useState<FeeEstimate | null>(null);
   const [tx, setTx] = useState<SendTransactionDraft | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
+  const [scheduledTransfer, setScheduledTransfer] = useState<ScheduledTransfer | null>(null);
+  const [timing, setTiming] = useState<TransferTiming>('immediate');
+  const [schedule, setSchedule] = useState<ScheduleConfig | undefined>();
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -131,18 +202,31 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
     (values: SendFormValues): boolean => {
       const nextErrors: ValidationErrors = {
         to: validateRecipientAddress(values.to),
+        handle: undefined,
         amount: validateAmount(values.amount, balance, assetDecimals),
         note: values.note ? validateTransferNote(values.note) : undefined,
       };
 
+      if (values.timing === 'scheduled') {
+        const scheduleError = validateSchedule(values.schedule);
+        if (scheduleError) {
+          nextErrors.simulation = scheduleError;
+        }
+      } else {
+        nextErrors.simulation = undefined;
+      }
+
       setErrors(nextErrors);
-      return !nextErrors.to && !nextErrors.amount && !nextErrors.note;
+      return !nextErrors.to && !nextErrors.amount && !nextErrors.note && !nextErrors.simulation;
     },
     [balance, assetDecimals]
   );
 
   const goToReview = useCallback(
     async (values: SendFormValues) => {
+      setTiming(values.timing ?? 'immediate');
+      setSchedule(values.schedule);
+
       if (!validateForm(values)) {
         return false;
       }
@@ -151,12 +235,41 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
       setErrors((current) => ({ ...current, simulation: undefined }));
 
       try {
-        const estimatedFee = await service.estimateFee(values);
+        const recipientInput = values.to.trim();
+        let resolvedHandle: ResolvedHandle | undefined;
+        let resolvedValues = { ...values, to: recipientInput };
+
+        if (isHandleInput(recipientInput)) {
+          const resolver = service.resolveHandle ?? defaultResolveHandle;
+          const handle = normalizeUsernameHandle(recipientInput);
+          const resolved = await resolver(handle);
+
+          if (!resolved) {
+            setErrors((current) => ({
+              ...current,
+              to: HANDLE_NOT_FOUND_MESSAGE,
+              handle: HANDLE_NOT_FOUND_MESSAGE,
+            }));
+            return false;
+          }
+
+          resolvedHandle = resolved;
+          resolvedValues = { ...values, to: resolved.accountAddress };
+        }
+
+        const estimatedFee = await service.estimateFee(resolvedValues);
         const total = (Number(values.amount) + Number(estimatedFee.totalFee)).toFixed(7);
         const truncatedNote = values.note ? truncateTransferNote(values.note) : undefined;
 
         setFee(estimatedFee);
-        setTx({ ...values, fee: estimatedFee, total, truncatedNote });
+        setTx({
+          ...resolvedValues,
+          fee: estimatedFee,
+          total,
+          truncatedNote,
+          recipientInput,
+          resolvedHandle,
+        });
         setStep('review');
         return true;
       } catch (error) {
@@ -193,6 +306,34 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
           return;
         }
 
+        if (timing === 'scheduled') {
+          if (!schedule) {
+            setErrors((current) => ({ ...current, password: 'Schedule details are missing' }));
+            return;
+          }
+
+          const createScheduled =
+            service.createScheduledTransfer ??
+            ((draft, scheduleConfig) =>
+              schedulerClient.createScheduledTransfer({
+                accountAddress,
+                to: draft.to,
+                amount: draft.amount,
+                asset: 'XLM',
+                frequency: scheduleConfig.frequency,
+                startAt: toIsoStartAt(scheduleConfig.startAt),
+                endAt: scheduleConfig.endAt ? toIsoStartAt(scheduleConfig.endAt) : undefined,
+                note: draft.truncatedNote,
+                userApproved: true,
+                relayPayload: buildDefaultRelayPayload(draft.to, draft.amount),
+              }));
+
+          const created = await createScheduled(tx, schedule);
+          setScheduledTransfer(created);
+          setStep('scheduled');
+          return;
+        }
+
         const signed = await service.signTransaction(tx);
         const submission = await service.submitTransaction(signed);
 
@@ -215,7 +356,7 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
         setSubmitting(false);
       }
     },
-    [pollIntervalMs, service, tx]
+    [accountAddress, pollIntervalMs, schedule, schedulerClient, service, timing, tx]
   );
 
   const setMaxAmount = useCallback(() => {
@@ -229,6 +370,9 @@ export function useSendTransaction(options: UseSendTransactionOptions = {}) {
     fee,
     tx,
     txId,
+    scheduledTransfer,
+    timing,
+    schedule,
     errors,
     submitting,
     setStep,

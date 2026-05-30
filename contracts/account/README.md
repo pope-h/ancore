@@ -105,6 +105,19 @@ fn get_session_key(env: Env, public_key: BytesN<32>) -> Option<SessionKey>
 
 Manage session keys for the account.
 
+### Validation Module Boundary
+
+Pluggable validation modules are defined in `contracts/validation-modules/`.
+The MVP account integration boundary is interface-level only: the account
+contract does not yet store module addresses or invoke modules during
+`execute`.
+
+Future module-aware execution should validate the existing owner/session-key
+authority and nonce first, build a `ValidationContext` from the exact target,
+function, canonical argument digest, and nonce, invoke the configured module's
+`validate` function, then increment nonce and dispatch only after module
+approval. Module failures must fail closed.
+
 ## Contract Errors
 
 The contract uses structured error codes to provide clear feedback for failure conditions. These error codes are essential for SDK and frontend error handling.

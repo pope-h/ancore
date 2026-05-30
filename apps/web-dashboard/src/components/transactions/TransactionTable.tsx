@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { MerchantBadge } from '@ancore/ui-kit';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -11,6 +12,7 @@ import type { Transaction, TransactionSortKey, TransactionTableState } from './t
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  onExportStatement?: () => void;
 }
 
 const DATE_FILTER_LABELS: Record<TransactionTableState['date'], string> = {
@@ -57,7 +59,7 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
+export function TransactionTable({ onExportStatement, transactions }: TransactionTableProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = useMemo(() => parseTransactionTableState(searchParams), [searchParams]);
 
@@ -85,11 +87,22 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Transactions</h1>
-        <p className="text-sm text-slate-600">
-          Filter and sort transaction history without losing the current view.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold">Transactions</h1>
+          <p className="text-sm text-slate-600">
+            Filter and sort transaction history without losing the current view.
+          </p>
+        </div>
+        {onExportStatement ? (
+          <button
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            onClick={onExportStatement}
+            type="button"
+          >
+            Export statement
+          </button>
+        ) : null}
       </header>
 
       <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
@@ -190,6 +203,12 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
                 >
+                  Merchant
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
+                >
                   Memo
                 </th>
               </tr>
@@ -197,7 +216,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
             <tbody className="divide-y divide-slate-200">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
                     No transactions match the selected filters.
                   </td>
                 </tr>
@@ -217,6 +236,16 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                       {transaction.status}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{transaction.counterparty}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {transaction.merchant ? (
+                        <MerchantBadge
+                          merchantName={transaction.merchant.name}
+                          status={transaction.merchant.verificationStatus}
+                        />
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{transaction.memo}</td>
                   </tr>
                 ))

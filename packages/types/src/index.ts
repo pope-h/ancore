@@ -33,3 +33,8 @@ export * from './user-operation';
 export * from './wallet';
 export * from './guards';
 export * from './schemas';
+export * from './payment-request';
+export * from './contacts';
+export * from './scheduled-transfer';
+export * from './statement';
+export * from './handle-resolution';

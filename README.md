@@ -17,6 +17,8 @@ Ancore brings advanced account abstraction capabilities to Stellar/Soroban, enab
 
 This is a monorepo containing:
 
+<!-- repo-structure-check:start -->
+
 ```
 ancore/
 ├── apps/                     # User-facing applications
@@ -46,8 +48,20 @@ ancore/
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
     ├── security/             # Security model & audits
-    └── guides/               # Developer guides
+    └── user-guide/           # End-user guides
 ```
+
+<!-- repo-structure-check:end -->
+
+### Repository Structure Drift Check
+
+The repository tree above is guarded by a lightweight drift check so contributor-facing docs do not reference renamed or removed modules. Run it locally with:
+
+```bash
+pnpm docs:check-structure
+```
+
+When adding, renaming, or removing documented modules, update the tree inside the `repo-structure-check` markers in this README and in `docs/architecture/OVERVIEW.md`. If the checked documentation set changes, update `scripts/check-docs-repo-structure.mjs` and the docs structure workflow together.
 
 ## Security Boundaries
 
@@ -112,6 +126,17 @@ pnpm contracts:build
 # Test contracts
 pnpm contracts:test
 ```
+
+### Updating WASM Size Budgets
+
+WASM contract sizes are monitored in CI to prevent regression. The budget for each contract is defined in `contracts/budgets/wasm-budgets.json`. 
+
+If your changes intentionally increase the contract size beyond the current budget:
+1. Ensure your contract builds locally: `pnpm contracts:build`
+2. Check the new size of the optimized `.wasm` files in `contracts/target/wasm32-unknown-unknown/release/`.
+3. You can run the local size check with: `node scripts/check-wasm-size.js`
+4. Update `contracts/budgets/wasm-budgets.json` with the new size budget, and commit the changes.
+
 
 ## Contributing
 

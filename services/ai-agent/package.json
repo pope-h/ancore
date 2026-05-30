@@ -1,10 +1,12 @@
 {
   "name": "@ancore/ai-agent",
   "version": "0.1.0",
-  "description": "AI agent service for draft financial intent generation",
-  "main": "./dist/server.js",
+  "description": "AI-assisted financial workflow orchestration service for Ancore",
+  "main": "./dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
     "test": "jest --coverage",
     "lint": "eslint src/"
   },
@@ -26,6 +28,7 @@
     "jest": "^29.7.0",
     "supertest": "^6.3.4",
     "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0"
   },
   "jest": {

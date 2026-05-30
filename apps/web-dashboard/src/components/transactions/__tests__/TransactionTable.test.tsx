@@ -6,19 +6,26 @@ import { TransactionTable } from '../TransactionTable';
 import { filterTransactions, sortTransactions } from '../transaction-table-state';
 import type { Transaction } from '../transaction-types';
 
+const daysAgo = (days: number): string => {
+  const value = new Date();
+  value.setDate(value.getDate() - days);
+  return value.toISOString();
+};
+
 const transactions: Transaction[] = [
   {
     id: 'tx-1',
-    occurredAt: '2026-04-24T10:00:00.000Z',
+    occurredAt: daysAgo(10),
     type: 'payment',
     status: 'completed',
     amount: 142.5,
     counterparty: 'Acme Treasury',
     memo: 'Invoice 1042',
+    merchant: { name: 'Acme Treasury', verificationStatus: 'verified' },
   },
   {
     id: 'tx-2',
-    occurredAt: '2026-04-24T10:00:00.000Z',
+    occurredAt: daysAgo(10),
     type: 'swap',
     status: 'completed',
     amount: 142.5,
@@ -27,7 +34,7 @@ const transactions: Transaction[] = [
   },
   {
     id: 'tx-3',
-    occurredAt: '2026-04-22T15:30:00.000Z',
+    occurredAt: daysAgo(25),
     type: 'transfer',
     status: 'pending',
     amount: 85,
@@ -36,7 +43,7 @@ const transactions: Transaction[] = [
   },
   {
     id: 'tx-4',
-    occurredAt: '2026-04-18T08:15:00.000Z',
+    occurredAt: daysAgo(50),
     type: 'payment',
     status: 'failed',
     amount: 12.75,
@@ -86,6 +93,18 @@ describe('TransactionTable', () => {
     expect(window.location.search).toContain('date=30d');
     expect(window.location.search).toContain('type=payment');
     expect(window.location.search).toContain('status=completed');
+  });
+
+  it('shows merchant badge chips in the transaction list', () => {
+    render(
+      <BrowserRouter>
+        <TransactionTable transactions={transactions} />
+      </BrowserRouter>
+    );
+
+    expect(
+      screen.getByRole('status', { name: 'Acme Treasury merchant verification: Verified' })
+    ).toBeInTheDocument();
   });
 
   it('renders only the rows that match the active filters', async () => {
