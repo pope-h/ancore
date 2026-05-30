@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { intentSchema } from './schemas/intent';
+import { intentSchema, HIGH_VALUE_PAYMENT_THRESHOLD } from './schemas/intent';
 
 const startTime = Date.now();
 
@@ -37,7 +37,21 @@ export function createApp(): Express {
     if (!parsed.success) {
       return res.status(400).json({ errors: parsed.error.flatten() });
     }
-    return res.status(200).json({ valid: true, intent: parsed.data });
+
+    const intent = parsed.data;
+    let requiresConfirmation = false;
+
+    // Flag high-value payments for confirmation
+    if (intent.type === 'payment') {
+      const amount = parseFloat(intent.amount);
+      requiresConfirmation = amount >= HIGH_VALUE_PAYMENT_THRESHOLD;
+    }
+
+    return res.status(200).json({
+      valid: true,
+      intent: parsed.data,
+      requiresConfirmation,
+    });
   });
 
   return app;
