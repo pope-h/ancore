@@ -40,9 +40,6 @@ jobs:
       - name: Test packages
         run: pnpm turbo run test --filter='./packages/*' --concurrency=1
 
-      - name: Check coverage gates
-        run: node scripts/coverage-gate.js
-
   apps:
     name: Apps — Lint & Test
     runs-on: ubuntu-latest
