@@ -23,7 +23,7 @@
 
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, symbol_short, Address, BytesN, Env,
+    contract, contracterror, contractimpl, contracttype, Address, BytesN, Env,
     Symbol, Val, Vec,
 };
 

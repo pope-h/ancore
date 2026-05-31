@@ -3,7 +3,7 @@
 //! Provides cursor staleness detection and other operational metrics
 //! to enable proactive monitoring and alerting.
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::{PgPool, Row};
 
@@ -65,6 +65,7 @@ pub async fn get_cursor_metrics(db: &PgPool) -> Result<Vec<CursorMetrics>> {
 }
 
 /// Get cursor metrics for a specific stream.
+#[allow(dead_code)]
 pub async fn get_cursor_metrics_for_stream(
     db: &PgPool,
     stream: &str,
@@ -104,6 +105,7 @@ pub async fn get_cursor_metrics_for_stream(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Duration;
 
     #[test]
     fn cursor_is_stale_when_exceeds_threshold() {

@@ -8,9 +8,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::error::Result;
-use crate::repositories::account_activity::{
-    ActivityFilter, ActivityRecord, CursorPage, PageResult,
-};
+use crate::repositories::account_activity::{ActivityFilter, ActivityRecord, CursorPage};
 
 /// Query parameters for activity list endpoint
 #[derive(Debug, Deserialize)]

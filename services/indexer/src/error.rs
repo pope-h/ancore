@@ -48,6 +48,7 @@ pub enum ApiError {
     Database(#[from] sqlx::Error),
 
     #[error("Query timed out: {0}")]
+    #[allow(dead_code)]
     QueryTimeout(String),
 
     #[error("Internal server error: {0}")]

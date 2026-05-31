@@ -11,7 +11,7 @@ use tracing::{debug, info, warn};
 use super::checkpoint::{Checkpoint, CheckpointStore, MemoryCheckpointStore};
 use super::sink::EventSink;
 use super::source::EventSource;
-use crate::schema::canonical::{normalise, CanonicalEvent, RawEvent};
+use crate::schema::canonical::{normalise, CanonicalEvent};
 
 // ── Worker ────────────────────────────────────────────────────────────────────
 
@@ -68,8 +68,8 @@ where
         }
     }
 
-    /// Seed the worker with an existing checkpoint (e.g. loaded from DB on startup).
-    pub fn with_checkpoint(mut self, cp: Checkpoint) -> Self {
+    /// Seed the worker with an existing checkpoint (sync; memory store only).
+    pub fn with_initial_checkpoint(self, cp: Checkpoint) -> Self {
         self.checkpoint.save_sync(&cp);
         self
     }
@@ -96,7 +96,7 @@ where
     }
 
     /// Load an existing checkpoint from the store and seed the worker.
-    pub async fn bootstrap_from_store(mut self) -> anyhow::Result<Self> {
+    pub async fn bootstrap_from_store(self) -> anyhow::Result<Self> {
         if let Some(cp) = self
             .checkpoint
             .load(&self.config.stream)
@@ -109,7 +109,7 @@ where
     }
 
     /// Seed the worker with an existing checkpoint value.
-    pub async fn with_checkpoint(mut self, cp: Checkpoint) -> anyhow::Result<Self> {
+    pub async fn with_checkpoint(self, cp: Checkpoint) -> anyhow::Result<Self> {
         self.checkpoint.save(&cp).await?;
         Ok(self)
     }
@@ -213,6 +213,7 @@ mod tests {
     use super::*;
     use crate::ingest::sink::MemorySink;
     use crate::ingest::source::VecSource;
+    use crate::schema::canonical::RawEvent;
     use chrono::Utc;
 
     fn raw(ledger_seq: u32, topic: &str) -> RawEvent {
@@ -249,8 +250,8 @@ mod tests {
         let source = VecSource::new(vec![raw(5, "transfer"), raw(3, "transfer")]);
         let sink = MemorySink::default();
         // Seed checkpoint at ledger 4 — ledger 3 is behind, ledger 5 is ahead
-        let mut worker =
-            IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(Checkpoint {
+        let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
+            .with_initial_checkpoint(Checkpoint {
                 stream: "main".into(),
                 last_ledger_seq: 4,
             });
@@ -289,7 +290,7 @@ mod tests {
         ]);
         let sink2 = MemorySink::default();
         let mut worker2 =
-            IngestWorker::new(WorkerConfig::default(), source2, sink2).with_checkpoint(cp);
+            IngestWorker::new(WorkerConfig::default(), source2, sink2).with_initial_checkpoint(cp);
 
         let stats = worker2.run_once().await.unwrap();
 
@@ -341,8 +342,8 @@ mod tests {
         let source = VecSource::new(vec![raw(1, "transfer")]);
         let sink = MemorySink::default();
         // Checkpoint already at 5 — ledger 1 will be skipped
-        let mut worker =
-            IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(Checkpoint {
+        let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
+            .with_initial_checkpoint(Checkpoint {
                 stream: "main".into(),
                 last_ledger_seq: 5,
             });

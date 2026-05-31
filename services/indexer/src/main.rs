@@ -9,11 +9,14 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod api;
 mod error;
+mod metrics;
 mod repositories;
+
+use ancore_indexer::ingest::CheckpointStore;
 
 use api::account_activity;
 use api::health;
-use api::metrics;
+use api::metrics::metrics_handler;
 use api::statements;
 
 #[tokio::main]
@@ -105,7 +108,7 @@ async fn main() -> anyhow::Result<()> {
             get(statements::rows_handler),
         )
         .route("/health", get(health::health_handler))
-        .route("/metrics", get(metrics::metrics_handler))
+        .route("/metrics", get(metrics_handler))
         .layer(GovernorLayer {
             config: governor_conf,
         })
