@@ -89,8 +89,7 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
       setDailyTransferLimit: (dailyTransferLimit) => set({ dailyTransferLimit }),
-      setTransferStepUpThreshold: (transferStepUpThreshold) =>
-        set({ transferStepUpThreshold }),
+      setTransferStepUpThreshold: (transferStepUpThreshold) => set({ transferStepUpThreshold }),
       reset: () => set(DEFAULTS),
     }),
     {
@@ -129,16 +128,6 @@ export const useSettingsStore = create<SettingsState>()(
               : DEFAULTS.autoLockMinutes,
           requirePasswordForSensitiveActions:
             typeof persisted.requirePasswordForSensitiveActions === 'boolean'
-              ? persisted.requirePasswordForSensitiveActions
-              : DEFAULTS.requirePasswordForSensitiveActions,
-          dailyTransferLimit:
-            typeof dailyTransferLimit === 'number' && dailyTransferLimit >= 0
-              ? dailyTransferLimit
-              : DEFAULTS.dailyTransferLimit,
-          transferStepUpThreshold:
-            typeof transferStepUpThreshold === 'number' && transferStepUpThreshold >= 0
-              ? transferStepUpThreshold
-              : DEFAULTS.transferStepUpThresholdions === 'boolean'
               ? persisted.requirePasswordForSensitiveActions
               : DEFAULTS.requirePasswordForSensitiveActions,
           dailyTransferLimit:

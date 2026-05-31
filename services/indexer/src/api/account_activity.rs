@@ -65,7 +65,8 @@ fn validate_account_id(id: &str) -> Result<()> {
     // Stellar public keys are typically 56 characters (G + 56 base32 chars)
     if id.len() != 56 || !id.starts_with('G') {
         return Err(crate::error::ApiError::InvalidFilter(
-            "account_id must be a valid Stellar public key (56 characters starting with G)".to_string(),
+            "account_id must be a valid Stellar public key (56 characters starting with G)"
+                .to_string(),
         ));
     }
     Ok(())
@@ -140,7 +141,13 @@ pub async fn list_handler(
     };
 
     // Query repository
-    let result = crate::repositories::account_activity::get_account_activity(&db, &account_id, &filter, &page).await?;
+    let result = crate::repositories::account_activity::get_account_activity(
+        &db,
+        &account_id,
+        &filter,
+        &page,
+    )
+    .await?;
 
     let count = result.items.len();
     let response = ActivityListResponse {
@@ -171,7 +178,9 @@ pub async fn get_by_id_handler(
     })?;
 
     // Query repository
-    let activity = crate::repositories::account_activity::get_activity_by_id(&db, &account_id, &activity_uuid).await?;
+    let activity =
+        crate::repositories::account_activity::get_activity_by_id(&db, &account_id, &activity_uuid)
+            .await?;
 
     match activity {
         Some(record) => Ok(Json(ActivityResponse { data: record })),

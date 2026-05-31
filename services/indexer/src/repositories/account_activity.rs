@@ -140,18 +140,20 @@ pub async fn get_account_activity(
         query.push(" AND (created_at, id) < (");
         query.push_bind(decoded.t.clone());
         query.push(", ");
-        query.push_bind(Uuid::parse_str(&decoded.i).map_err(|_| {
-            ApiError::InvalidCursor("Invalid UUID in cursor".to_string())
-        })?);
+        query.push_bind(
+            Uuid::parse_str(&decoded.i)
+                .map_err(|_| ApiError::InvalidCursor("Invalid UUID in cursor".to_string()))?,
+        );
         query.push(")");
         param_count += 2;
     } else if let Some(ref decoded) = decoded_before {
         query.push(" AND (created_at, id) > (");
         query.push_bind(decoded.t.clone());
         query.push(", ");
-        query.push_bind(Uuid::parse_str(&decoded.i).map_err(|_| {
-            ApiError::InvalidCursor("Invalid UUID in cursor".to_string())
-        })?);
+        query.push_bind(
+            Uuid::parse_str(&decoded.i)
+                .map_err(|_| ApiError::InvalidCursor("Invalid UUID in cursor".to_string()))?,
+        );
         query.push(")");
         param_count += 2;
     }

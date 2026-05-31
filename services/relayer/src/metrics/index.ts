@@ -35,9 +35,7 @@ interface CounterSnapshot {
 const LATENCY_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
 class RelayLatencyHistogram {
-  private readonly buckets: Map<number, number> = new Map(
-    LATENCY_BUCKETS.map((le) => [le, 0])
-  );
+  private readonly buckets: Map<number, number> = new Map(LATENCY_BUCKETS.map((le) => [le, 0]));
   private infCount = 0;
   private sum = 0;
   private count = 0;
@@ -46,11 +44,10 @@ class RelayLatencyHistogram {
     this.sum += durationSeconds;
     this.count += 1;
 
-    let recorded = false;
     for (const le of LATENCY_BUCKETS) {
       if (durationSeconds <= le) {
         this.buckets.set(le, (this.buckets.get(le) ?? 0) + 1);
-        if (!recorded) recorded = true;
+        break;
       }
     }
     // +Inf bucket always increments
@@ -116,13 +113,13 @@ export function renderPrometheusMetrics(): string {
   const lines: string[] = [];
 
   // ── relay_request_duration_seconds ──────────────────────────────────────
-  lines.push('# HELP relay_request_duration_seconds Histogram of /relay/* handler latency in seconds');
+  lines.push(
+    '# HELP relay_request_duration_seconds Histogram of /relay/* handler latency in seconds'
+  );
   lines.push('# TYPE relay_request_duration_seconds histogram');
   const latencySnap = relayLatency.snapshot();
   for (const bucket of latencySnap.buckets) {
-    lines.push(
-      `relay_request_duration_seconds_bucket{le="${bucket.le}"} ${bucket.count}`
-    );
+    lines.push(`relay_request_duration_seconds_bucket{le="${bucket.le}"} ${bucket.count}`);
   }
   lines.push(`relay_request_duration_seconds_sum ${latencySnap.sum}`);
   lines.push(`relay_request_duration_seconds_count ${latencySnap.count}`);

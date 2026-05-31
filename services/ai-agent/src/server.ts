@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import { intentSchema, HIGH_VALUE_PAYMENT_THRESHOLD } from './schemas/intent';
+import { requestLogger } from './middleware/request-logger';
 
 const startTime = Date.now();
 
@@ -7,16 +8,13 @@ const startTime = Date.now();
  * App factory — exported for testing.
  *
  * Creates and configures the Express application for the AI Agent service.
- * The service is currently a scaffold; the health endpoint is the only
- * implemented route. Additional routes will be added as the AI workflow
- * orchestration features are built out.
+ * MVP routes: health, draft-intent, and intent validation (draft-only; no execution).
  */
 export function createApp(): Express {
   const app = express();
 
   app.use(express.json());
 
-  const { requestLogger } = require('./middleware/request-logger');
   app.use(requestLogger);
 
   // ── Health endpoint ────────────────────────────────────────────────────────
@@ -38,7 +36,7 @@ export function createApp(): Express {
     if (!prompt || !accountId) {
       return res.status(400).json({ error: 'Invalid request' });
     }
-    const isInvoice = prompt.toLowerCase().includes('invoice');
+    const isInvoice = typeof prompt === 'string' && prompt.toLowerCase().includes('invoice');
     return res.status(200).json({
       status: 'draft',
       requiresConfirmation: true,
@@ -58,7 +56,15 @@ export function createApp(): Express {
   app.post('/v1/intents/validate', (req: Request, res: Response) => {
     const parsed = intentSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(422).json({ issues: parsed.error.issues });
+      const fieldErrors: Record<string, string[]> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path.length > 0 ? issue.path.join('.') : '_root';
+        if (!fieldErrors[path]) {
+          fieldErrors[path] = [];
+        }
+        fieldErrors[path].push(issue.message);
+      }
+      return res.status(400).json({ errors: { fieldErrors } });
     }
 
     const intent = parsed.data;
@@ -74,26 +80,6 @@ export function createApp(): Express {
       valid: true,
       intent: parsed.data,
       requiresConfirmation,
-    });
-  });
-
-  // ── Draft intent endpoint ───────────────────────────────────────────────────
-  // Creates a draft intent from natural language prompt.
-  // Returns payment or invoice intent based on prompt content.
-  app.post('/agent/draft-intent', (req: Request, res: Response) => {
-    const { prompt, accountId } = req.body;
-
-    if (!prompt || !accountId) {
-      return res.status(400).json({ error: 'Invalid request' });
-    }
-
-    const isInvoice = typeof prompt === 'string' && prompt.toLowerCase().includes('invoice');
-
-    return res.status(200).json({
-      status: 'draft',
-      requiresConfirmation: true,
-      intent: { type: isInvoice ? 'invoice' : 'payment' },
-      summary: `Draft ${isInvoice ? 'invoice' : 'payment'} intent created`,
     });
   });
 

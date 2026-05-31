@@ -134,7 +134,7 @@ describe('Invoice Intent Schema and Validation', () => {
       expect(res.body.intent).toEqual(fixture);
     });
 
-    it('returns 422 with issues array for invalid JSON', async () => {
+    it('returns 400 with field errors for invalid JSON', async () => {
       const fixture = {
         type: 'invoice',
         amount: 'abc', // invalid
@@ -143,11 +143,10 @@ describe('Invoice Intent Schema and Validation', () => {
         dueDate: '2026-12-31T23:59:59Z',
       };
       const res = await request(app).post('/v1/intents/validate').send(fixture);
-      expect(res.status).toBe(422);
-      expect(res.body.issues).toBeDefined();
-      expect(Array.isArray(res.body.issues)).toBe(true);
-      expect(res.body.issues.length).toBeGreaterThan(0);
-      expect(res.body.issues[0].path).toContain('amount');
+      expect(res.status).toBe(400);
+      expect(res.body.errors).toBeDefined();
+      expect(res.body.errors.fieldErrors).toBeDefined();
+      expect(res.body.errors.fieldErrors.amount).toBeDefined();
     });
   });
 });

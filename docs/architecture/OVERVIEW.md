@@ -55,7 +55,8 @@ ancore/
 │   ├── stellar/              # Stellar/Soroban utilities
 │   ├── crypto/               # Cryptographic utilities
 │   ├── ui-kit/               # Shared UI components
-│   └── types/                # Shared TypeScript types
+│   ├── types/                # Shared TypeScript types
+│   └── test-fixtures/        # Shared test fixtures for apps and services
 │
 ├── contracts/                # Soroban smart contracts
 │   ├── account/              # Core account contract
@@ -66,7 +67,7 @@ ancore/
 ├── services/                 # Optional infrastructure
 │   ├── relayer/              # Transaction relay service
 │   ├── indexer/              # Blockchain indexer
-│   └── ai-agent/             # Planned AI orchestration service scaffold
+│   └── ai-agent/             # AI agent MVP (draft-only intents)
 │
 └── docs/                     # Documentation
     ├── architecture/         # System architecture
@@ -264,7 +265,7 @@ Optional relayer network for:
 ## Related Documents
 
 - [Integration guide](../integration-guide.md) (companion table links to [Send flow](#send-flow))
-- [Account Model](./ACCOUNT_MODEL.md)
+- [Account Contract](../../contracts/account/README.md)
 - [Session Keys](./SESSION_KEYS.md)
 - [Security Model](../security/THREAT_MODEL.md)
 - [API Reference](../api/REFERENCE.md)

@@ -118,6 +118,12 @@ Run these checks before every release on both Chrome and Firefox.
 
 ---
 
+## Transfer limits and step-up verification
+
+The extension wallet enforces optional **daily transfer limits** and **step-up thresholds** configured in Settings. Policy types live in `@ancore/types` (`TransferPolicy`, `validateTransferPolicy`). Amounts above the step-up threshold require additional confirmation; transfers that would exceed the daily limit are blocked. Defaults and persistence are managed in `apps/extension-wallet/src/stores/settings.ts` (`dailyTransferLimit`, `transferStepUpThreshold`).
+
+---
+
 ## References
 
 - [Chrome MV3 CSP documentation](https://developer.chrome.com/docs/extensions/mv3/manifest/content_security_policy/)

@@ -1,4 +1,4 @@
-﻿use axum::{
+use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -114,7 +114,11 @@ impl IntoResponse for ApiError {
                 }
             };
 
-        let envelope = ErrorEnvelope { code, message, details };
+        let envelope = ErrorEnvelope {
+            code,
+            message,
+            details,
+        };
         (status, Json(envelope)).into_response()
     }
 }

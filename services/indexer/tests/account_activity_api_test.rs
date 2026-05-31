@@ -12,8 +12,9 @@ use ancore_indexer::{api::account_activity, repositories::account_activity::Acti
 async fn setup_test_app() -> (Router, PgPool) {
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5432/ancore_test".to_string());
+    let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+        "postgresql://postgres:postgres@localhost:5432/ancore_test".to_string()
+    });
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -82,7 +83,14 @@ async fn integration_test_list_activity_happy_path() {
 
     // Seed DB with activity records
     for i in 0..5 {
-        insert_test_activity(&pool, account_id, "payment", 1000 + i, base_time + chrono::Duration::seconds(i)).await;
+        insert_test_activity(
+            &pool,
+            account_id,
+            "payment",
+            1000 + i,
+            base_time + chrono::Duration::seconds(i),
+        )
+        .await;
     }
 
     let response = app
@@ -97,9 +105,7 @@ async fn integration_test_list_activity_happy_path() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert!(json["data"].is_array());
@@ -119,8 +125,22 @@ async fn integration_test_list_with_all_filters() {
 
     // Seed mixed records
     insert_test_activity(&pool, account_id, "payment", 100, base_time).await;
-    insert_test_activity(&pool, account_id, "trade", 150, base_time + chrono::Duration::hours(1)).await;
-    insert_test_activity(&pool, account_id, "payment", 200, base_time + chrono::Duration::hours(2)).await;
+    insert_test_activity(
+        &pool,
+        account_id,
+        "trade",
+        150,
+        base_time + chrono::Duration::hours(1),
+    )
+    .await;
+    insert_test_activity(
+        &pool,
+        account_id,
+        "payment",
+        200,
+        base_time + chrono::Duration::hours(2),
+    )
+    .await;
 
     let uri = format!(
         "/api/v1/accounts/{}/activity?activity_type=payment&ledger_min=100&ledger_max=200",
@@ -134,9 +154,7 @@ async fn integration_test_list_with_all_filters() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["data"].as_array().unwrap().len(), 2);
@@ -152,14 +170,24 @@ async fn integration_test_pagination_forward() {
 
     // Seed 25 records
     for i in 0..25 {
-        insert_test_activity(&pool, account_id, "payment", 1000 + i, base_time + chrono::Duration::seconds(i)).await;
+        insert_test_activity(
+            &pool,
+            account_id,
+            "payment",
+            1000 + i,
+            base_time + chrono::Duration::seconds(i),
+        )
+        .await;
     }
 
     // Page 1
     let response1 = app
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/accounts/{}/activity?limit=10", account_id))
+                .uri(&format!(
+                    "/api/v1/accounts/{}/activity?limit=10",
+                    account_id
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -167,9 +195,7 @@ async fn integration_test_pagination_forward() {
         .unwrap();
 
     assert_eq!(response1.status(), StatusCode::OK);
-    let body1 = hyper::body::to_bytes(response1.into_body())
-        .await
-        .unwrap();
+    let body1 = hyper::body::to_bytes(response1.into_body()).await.unwrap();
     let json1: serde_json::Value = serde_json::from_slice(&body1).unwrap();
 
     assert_eq!(json1["data"].as_array().unwrap().len(), 10);
@@ -187,9 +213,7 @@ async fn integration_test_pagination_forward() {
         .unwrap();
 
     assert_eq!(response2.status(), StatusCode::OK);
-    let body2 = hyper::body::to_bytes(response2.into_body())
-        .await
-        .unwrap();
+    let body2 = hyper::body::to_bytes(response2.into_body()).await.unwrap();
     let json2: serde_json::Value = serde_json::from_slice(&body2).unwrap();
 
     assert_eq!(json2["data"].as_array().unwrap().len(), 10);
@@ -217,9 +241,7 @@ async fn integration_test_invalid_cursor_returns_400() {
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["error"], "invalid_cursor");
@@ -247,9 +269,7 @@ async fn integration_test_both_cursors_returns_400() {
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["error"], "invalid_filter");
@@ -265,13 +285,23 @@ async fn integration_test_invalid_limit_clamped() {
 
     // Seed 150 records
     for i in 0..150 {
-        insert_test_activity(&pool, account_id, "payment", 1000 + i, base_time + chrono::Duration::seconds(i)).await;
+        insert_test_activity(
+            &pool,
+            account_id,
+            "payment",
+            1000 + i,
+            base_time + chrono::Duration::seconds(i),
+        )
+        .await;
     }
 
     let response = app
         .oneshot(
             Request::builder()
-                .uri(&format!("/api/v1/accounts/{}/activity?limit=500", account_id))
+                .uri(&format!(
+                    "/api/v1/accounts/{}/activity?limit=500",
+                    account_id
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -280,9 +310,7 @@ async fn integration_test_invalid_limit_clamped() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     // Should be clamped to MAX_LIMIT (100)
@@ -302,10 +330,7 @@ async fn integration_test_get_by_id_found() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(&format!(
-                    "/api/v1/accounts/{}/activity/{}",
-                    account_id, id
-                ))
+                .uri(&format!("/api/v1/accounts/{}/activity/{}", account_id, id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -314,9 +339,7 @@ async fn integration_test_get_by_id_found() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["data"]["id"], id.to_string());
@@ -366,9 +389,7 @@ async fn integration_test_account_not_found_returns_empty() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["data"].as_array().unwrap().len(), 0);
@@ -384,8 +405,22 @@ async fn integration_test_get_types() {
 
     // Seed records with multiple types
     insert_test_activity(&pool, account_id, "payment", 1000, base_time).await;
-    insert_test_activity(&pool, account_id, "trade", 1001, base_time + chrono::Duration::seconds(1)).await;
-    insert_test_activity(&pool, account_id, "trust_change", 1002, base_time + chrono::Duration::seconds(2)).await;
+    insert_test_activity(
+        &pool,
+        account_id,
+        "trade",
+        1001,
+        base_time + chrono::Duration::seconds(1),
+    )
+    .await;
+    insert_test_activity(
+        &pool,
+        account_id,
+        "trust_change",
+        1002,
+        base_time + chrono::Duration::seconds(2),
+    )
+    .await;
 
     let response = app
         .oneshot(
@@ -399,9 +434,7 @@ async fn integration_test_get_types() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["data"].as_array().unwrap().len(), 3);

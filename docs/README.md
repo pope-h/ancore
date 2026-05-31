@@ -15,11 +15,24 @@
 |----------|---------|
 | [System Overview](architecture/OVERVIEW.md) | High-level architecture |
 
+## AI
+
+| Document | Purpose |
+|----------|---------|
+| [Intent schemas](ai/intents.md) | Draft intent types and validation contract |
+
+## Testing
+
+| Document | Purpose |
+|----------|---------|
+| [Extension E2E smoke](testing/extension-e2e-smoke.md) | Browser extension smoke test guide |
+
 ## Security
 
 | Document | Purpose |
 |----------|---------|
 | [Threat Model](security/THREAT_MODEL.md) | Attack surface and mitigations |
+| [Extension wallet](security/extension-wallet.md) | CSP and wallet security (includes transfer limits / step-up policy) |
 | [Cryptography](security/CRYPTOGRAPHY.md) | Cryptographic primitives and usage |
 | [Audit Checklist](security/AUDIT_CHECKLIST.md) | Pre-audit preparation checklist |
 | [Incident Response](security/INCIDENT_RESPONSE.md) | Security incident playbook |

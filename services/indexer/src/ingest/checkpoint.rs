@@ -60,13 +60,11 @@ impl CheckpointStore for PostgresCheckpointStore {
 /// Load the current checkpoint for `stream`, returning `None` if no checkpoint
 /// exists yet (i.e. first run).
 pub async fn load(db: &PgPool, stream: &str) -> anyhow::Result<Option<Checkpoint>> {
-    let row = sqlx::query(
-        "SELECT last_ledger_seq FROM ingest_checkpoints WHERE stream = $1",
-    )
-    .bind(stream)
-    .fetch_optional(db)
-    .await
-    .context("load checkpoint")?;
+    let row = sqlx::query("SELECT last_ledger_seq FROM ingest_checkpoints WHERE stream = $1")
+        .bind(stream)
+        .fetch_optional(db)
+        .await
+        .context("load checkpoint")?;
 
     Ok(row.map(|r| Checkpoint {
         stream: stream.to_owned(),
@@ -159,16 +157,28 @@ mod tests {
     #[test]
     fn memory_store_upserts() {
         let store = MemoryCheckpointStore::default();
-        store.save_sync(&Checkpoint { stream: "main".into(), last_ledger_seq: 10 });
-        store.save_sync(&Checkpoint { stream: "main".into(), last_ledger_seq: 20 });
+        store.save_sync(&Checkpoint {
+            stream: "main".into(),
+            last_ledger_seq: 10,
+        });
+        store.save_sync(&Checkpoint {
+            stream: "main".into(),
+            last_ledger_seq: 20,
+        });
         assert_eq!(store.load_sync("main").unwrap().last_ledger_seq, 20);
     }
 
     #[test]
     fn memory_store_independent_streams() {
         let store = MemoryCheckpointStore::default();
-        store.save_sync(&Checkpoint { stream: "a".into(), last_ledger_seq: 1 });
-        store.save_sync(&Checkpoint { stream: "b".into(), last_ledger_seq: 99 });
+        store.save_sync(&Checkpoint {
+            stream: "a".into(),
+            last_ledger_seq: 1,
+        });
+        store.save_sync(&Checkpoint {
+            stream: "b".into(),
+            last_ledger_seq: 99,
+        });
         assert_eq!(store.load_sync("a").unwrap().last_ledger_seq, 1);
         assert_eq!(store.load_sync("b").unwrap().last_ledger_seq, 99);
     }
@@ -259,11 +269,7 @@ mod tests {
             let pool = setup_test_db().await;
             let store = PostgresCheckpointStore::new(pool.clone());
 
-            let source1 = VecSource::new(vec![
-                raw_event(1),
-                raw_event(2),
-                raw_event(3),
-            ]);
+            let source1 = VecSource::new(vec![raw_event(1), raw_event(2), raw_event(3)]);
             let sink1 = MemorySink::default();
             let mut worker = IngestWorker::with_checkpoint_store(
                 WorkerConfig::default(),
@@ -273,11 +279,7 @@ mod tests {
             );
             worker.run_once().await.unwrap();
 
-            let source2 = VecSource::new(vec![
-                raw_event(2),
-                raw_event(3),
-                raw_event(4),
-            ]);
+            let source2 = VecSource::new(vec![raw_event(2), raw_event(3), raw_event(4)]);
             let sink2 = MemorySink::default();
             let mut worker2 = IngestWorker::with_checkpoint_store(
                 WorkerConfig::default(),
@@ -289,7 +291,10 @@ mod tests {
             let stats = worker2.run_once().await.unwrap();
             assert_eq!(stats.skipped, 2);
             assert_eq!(stats.normalised, 1);
-            assert_eq!(worker2.current_checkpoint().await.unwrap().last_ledger_seq, 4);
+            assert_eq!(
+                worker2.current_checkpoint().await.unwrap().last_ledger_seq,
+                4
+            );
         }
     }
 
@@ -304,7 +309,10 @@ mod tests {
         use chrono::Utc;
 
         fn make_cp(stream: &str, seq: u32) -> Checkpoint {
-            Checkpoint { stream: stream.into(), last_ledger_seq: seq }
+            Checkpoint {
+                stream: stream.into(),
+                last_ledger_seq: seq,
+            }
         }
 
         fn raw_event(ledger_seq: u32) -> RawEvent {
@@ -380,7 +388,8 @@ mod tests {
         fn deserialize_extra_fields_are_ignored() {
             // Forward-compatibility: unknown keys from a newer format must not break parsing.
             let json = r#"{"stream":"main","last_ledger_seq":7,"_future_field":"x","v":2}"#;
-            let cp: Checkpoint = serde_json::from_str(json).expect("extra fields should be ignored");
+            let cp: Checkpoint =
+                serde_json::from_str(json).expect("extra fields should be ignored");
             assert_eq!(cp.stream, "main");
             assert_eq!(cp.last_ledger_seq, 7);
         }
@@ -447,25 +456,29 @@ mod tests {
                 raw_event(6), // ahead — must process
             ]);
             let sink = MemorySink::default();
-            let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
-                .with_checkpoint(restored);
+            let mut worker =
+                IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(restored);
 
             let stats = worker.run_once().await.unwrap();
 
             assert_eq!(stats.skipped, 2, "ledgers 3 and 5 must be skipped");
             assert_eq!(stats.normalised, 1, "only ledger 6 must be processed");
-            assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 6);
+            assert_eq!(
+                worker.current_checkpoint().await.unwrap().last_ledger_seq,
+                6
+            );
         }
 
         #[tokio::test]
         async fn replay_safe_restoration_at_zero_processes_all_events() {
             // A freshly-deserialized checkpoint with seq=0 must not skip any valid events.
-            let cp: Checkpoint = serde_json::from_str(r#"{"stream":"main","last_ledger_seq":0}"#).unwrap();
+            let cp: Checkpoint =
+                serde_json::from_str(r#"{"stream":"main","last_ledger_seq":0}"#).unwrap();
 
             let source = VecSource::new(vec![raw_event(1), raw_event(2), raw_event(3)]);
             let sink = MemorySink::default();
-            let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
-                .with_checkpoint(cp);
+            let mut worker =
+                IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(cp);
 
             let stats = worker.run_once().await.unwrap();
 
@@ -483,12 +496,15 @@ mod tests {
 
             let source = VecSource::new(vec![raw_event(50), raw_event(99)]);
             let sink = MemorySink::default();
-            let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
-                .with_checkpoint(restored);
+            let mut worker =
+                IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(restored);
 
             worker.run_once().await.unwrap();
 
-            assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 100);
+            assert_eq!(
+                worker.current_checkpoint().await.unwrap().last_ledger_seq,
+                100
+            );
         }
     }
 }

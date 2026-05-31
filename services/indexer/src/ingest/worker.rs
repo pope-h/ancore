@@ -8,10 +8,10 @@
 use anyhow::Context;
 use tracing::{debug, info, warn};
 
-use crate::schema::canonical::{normalise, CanonicalEvent, RawEvent};
 use super::checkpoint::{Checkpoint, CheckpointStore, MemoryCheckpointStore};
 use super::sink::EventSink;
 use super::source::EventSource;
+use crate::schema::canonical::{normalise, CanonicalEvent, RawEvent};
 
 // ── Worker ────────────────────────────────────────────────────────────────────
 
@@ -150,8 +150,7 @@ where
             if raw.ledger_seq <= last_seq {
                 warn!(
                     ledger_seq = raw.ledger_seq,
-                    last_seq,
-                    "skipping out-of-order event"
+                    last_seq, "skipping out-of-order event"
                 );
                 stats.skipped += 1;
                 continue;
@@ -239,7 +238,10 @@ mod tests {
         assert_eq!(stats.normalised, 2);
         assert_eq!(stats.persisted, 2);
         assert_eq!(stats.skipped, 0);
-        assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 2);
+        assert_eq!(
+            worker.current_checkpoint().await.unwrap().last_ledger_seq,
+            2
+        );
     }
 
     #[tokio::test]
@@ -247,21 +249,31 @@ mod tests {
         let source = VecSource::new(vec![raw(5, "transfer"), raw(3, "transfer")]);
         let sink = MemorySink::default();
         // Seed checkpoint at ledger 4 — ledger 3 is behind, ledger 5 is ahead
-        let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
-            .with_checkpoint(Checkpoint { stream: "main".into(), last_ledger_seq: 4 });
+        let mut worker =
+            IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(Checkpoint {
+                stream: "main".into(),
+                last_ledger_seq: 4,
+            });
 
         let stats = worker.run_once().await.unwrap();
 
         assert_eq!(stats.fetched, 2);
-        assert_eq!(stats.skipped, 1);   // ledger 3 skipped
+        assert_eq!(stats.skipped, 1); // ledger 3 skipped
         assert_eq!(stats.normalised, 1); // ledger 5 processed
-        assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 5);
+        assert_eq!(
+            worker.current_checkpoint().await.unwrap().last_ledger_seq,
+            5
+        );
     }
 
     #[tokio::test]
     async fn restart_recovery_resumes_from_checkpoint() {
         // First run: process ledgers 1-3
-        let source1 = VecSource::new(vec![raw(1, "transfer"), raw(2, "transfer"), raw(3, "transfer")]);
+        let source1 = VecSource::new(vec![
+            raw(1, "transfer"),
+            raw(2, "transfer"),
+            raw(3, "transfer"),
+        ]);
         let sink = MemorySink::default();
         let mut worker = IngestWorker::new(WorkerConfig::default(), source1, sink);
         worker.run_once().await.unwrap();
@@ -270,17 +282,24 @@ mod tests {
         assert_eq!(cp.last_ledger_seq, 3);
 
         // Simulate restart: new worker seeded with saved checkpoint
-        let source2 = VecSource::new(vec![raw(2, "transfer"), raw(3, "transfer"), raw(4, "transfer")]);
+        let source2 = VecSource::new(vec![
+            raw(2, "transfer"),
+            raw(3, "transfer"),
+            raw(4, "transfer"),
+        ]);
         let sink2 = MemorySink::default();
-        let mut worker2 = IngestWorker::new(WorkerConfig::default(), source2, sink2)
-            .with_checkpoint(cp);
+        let mut worker2 =
+            IngestWorker::new(WorkerConfig::default(), source2, sink2).with_checkpoint(cp);
 
         let stats = worker2.run_once().await.unwrap();
 
         // Ledgers 2 and 3 are behind the checkpoint — only 4 should be processed
         assert_eq!(stats.skipped, 2);
         assert_eq!(stats.normalised, 1);
-        assert_eq!(worker2.current_checkpoint().await.unwrap().last_ledger_seq, 4);
+        assert_eq!(
+            worker2.current_checkpoint().await.unwrap().last_ledger_seq,
+            4
+        );
     }
 
     #[tokio::test]
@@ -311,7 +330,10 @@ mod tests {
         assert_eq!(stats.errors, 1);
         assert_eq!(stats.normalised, 1);
         // Checkpoint advances to the highest successfully processed ledger
-        assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 11);
+        assert_eq!(
+            worker.current_checkpoint().await.unwrap().last_ledger_seq,
+            11
+        );
     }
 
     #[tokio::test]
@@ -319,12 +341,18 @@ mod tests {
         let source = VecSource::new(vec![raw(1, "transfer")]);
         let sink = MemorySink::default();
         // Checkpoint already at 5 — ledger 1 will be skipped
-        let mut worker = IngestWorker::new(WorkerConfig::default(), source, sink)
-            .with_checkpoint(Checkpoint { stream: "main".into(), last_ledger_seq: 5 });
+        let mut worker =
+            IngestWorker::new(WorkerConfig::default(), source, sink).with_checkpoint(Checkpoint {
+                stream: "main".into(),
+                last_ledger_seq: 5,
+            });
 
         worker.run_once().await.unwrap();
 
         // Checkpoint must not regress
-        assert_eq!(worker.current_checkpoint().await.unwrap().last_ledger_seq, 5);
+        assert_eq!(
+            worker.current_checkpoint().await.unwrap().last_ledger_seq,
+            5
+        );
     }
 }

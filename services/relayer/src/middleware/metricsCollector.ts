@@ -12,6 +12,7 @@
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { relayLatency, relayErrors } from '../metrics';
+import type { LoggedRequest } from './requestLogger';
 
 const RELAY_PATH_PREFIX = '/relay/';
 
@@ -27,7 +28,7 @@ export function createMetricsCollectorMiddleware(): RequestHandler {
     }
 
     res.on('finish', () => {
-      const startMs = req.startTime ?? Date.now();
+      const startMs = (req as LoggedRequest).startTime ?? Date.now();
       const durationSeconds = (Date.now() - startMs) / 1000;
 
       relayLatency.observe(durationSeconds);
@@ -37,8 +38,7 @@ export function createMetricsCollectorMiddleware(): RequestHandler {
         // Use the error code from the response body if available via res.locals,
         // otherwise fall back to the HTTP status code string.
         const errorCode: string =
-          (res.locals.relayErrorCode as string | undefined) ??
-          `HTTP_${res.statusCode}`;
+          (res.locals.relayErrorCode as string | undefined) ?? `HTTP_${res.statusCode}`;
         relayErrors.increment(errorCode);
       }
     });

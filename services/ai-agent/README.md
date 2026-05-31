@@ -6,8 +6,7 @@ AI-assisted financial workflow orchestration service for the Ancore account abst
 
 ## Status
 
-The service is currently a **scaffold** with a production-ready container setup.
-The health endpoint is implemented; AI workflow routes will be added incrementally.
+**MVP** — health, draft-intent, and intent validation routes are implemented. The service drafts intents only; it never executes transactions autonomously (`requiresConfirmation` is always enforced).
 
 ---
 
@@ -74,19 +73,15 @@ Validates agent-extracted intents.
 }
 ```
 
-**Response `422` (Invalid):**
+**Response `400` (Invalid):**
 
 ```json
 {
-  "issues": [
-    {
-      "code": "invalid_type",
-      "expected": "string",
-      "received": "undefined",
-      "path": ["dueDate"],
-      "message": "Required"
+  "errors": {
+    "fieldErrors": {
+      "dueDate": ["Required"]
     }
-  ]
+  }
 }
 ```
 
