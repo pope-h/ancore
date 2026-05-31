@@ -1,6 +1,7 @@
 export * from './accounts';
 export * from './app';
 export * from './config/environment';
+export * from './linking';
 export * from './navigation';
 export * from './sdk';
 

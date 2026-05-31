@@ -160,11 +160,12 @@ export const usePaginatedTransactionHistory = ({
     return fetchPage({ mode, cursor });
   }, [fetchPage, state.items.length, state.nextCursor]);
 
-  // Cleanup backoff timeout on unmount
   useEffect(() => {
+    const backoffTimeout = backoffTimeoutRef.current;
+
     return () => {
-      if (backoffTimeoutRef.current) {
-        clearTimeout(backoffTimeoutRef.current);
+      if (backoffTimeout) {
+        clearTimeout(backoffTimeout);
       }
     };
   }, []);

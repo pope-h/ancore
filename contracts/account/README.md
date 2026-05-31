@@ -109,11 +109,11 @@ Manage session keys for the account.
 
 Session key permissions are stored on-chain as `Vec<u32>`. Each value is a permission index; SDK/UI code may combine selections into a bitmask using `1 << index`.
 
-| Index | Bit flag | Name | Description |
-| ----- | -------- | ---- | ----------- |
-| `0` | `1 << 0` (`0b001`) | `SEND_PAYMENT` | Authorize payment operations |
-| `1` | `1 << 1` (`0b010`) | `MANAGE_DATA` | Authorize manage-data operations |
-| `2` | `1 << 2` (`0b100`) | `INVOKE_CONTRACT` | Authorize arbitrary contract invocations |
+| Index | Bit flag           | Name              | Description                              |
+| ----- | ------------------ | ----------------- | ---------------------------------------- |
+| `0`   | `1 << 0` (`0b001`) | `SEND_PAYMENT`    | Authorize payment operations             |
+| `1`   | `1 << 1` (`0b010`) | `MANAGE_DATA`     | Authorize manage-data operations         |
+| `2`   | `1 << 2` (`0b100`) | `INVOKE_CONTRACT` | Authorize arbitrary contract invocations |
 
 > **Important:** `execute()` requires the session key `Vec<u32>` to contain the internal `PERMISSION_EXECUTE` constant (`1`). This is separate from the SDK bitmask representation above. Always include `1` in the permissions vector for session keys that need to call `execute()`, regardless of other permission indices selected.
 

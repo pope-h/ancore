@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { TransactionHistoryList } from '../../../components/TransactionHistoryList';
 import type { Transaction } from '../types';
 
+const formatSnapshotTimestamp = () => '5/29/2026, 11:00:00 AM';
+
 const mockTransaction = (overrides?: Partial<Transaction>): Transaction => ({
   id: 'tx-1',
   amount: '100.00',
@@ -29,6 +31,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -51,6 +54,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -72,6 +76,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -92,6 +97,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -174,6 +180,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -194,6 +201,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -214,6 +222,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 
@@ -238,6 +247,7 @@ describe('TransactionHistoryList', () => {
           onRetry={jest.fn()}
           onRefresh={jest.fn()}
           onLoadMore={jest.fn()}
+          formatTimestamp={formatSnapshotTimestamp}
         />
       );
 

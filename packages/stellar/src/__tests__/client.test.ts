@@ -37,6 +37,7 @@ const mockHorizonServerConstructor = jest.fn(() => ({
   loadAccount: jest.fn(),
   submitTransaction: jest.fn(),
 }));
+const mockTransactionFromXDR = jest.fn();
 
 jest.mock('@stellar/stellar-sdk', () => ({
   rpc: {
@@ -44,6 +45,11 @@ jest.mock('@stellar/stellar-sdk', () => ({
   },
   Horizon: {
     Server: jest.fn(() => mockHorizonServerConstructor()),
+  },
+  TransactionBuilder: {
+    fromXDR: jest.fn((xdr: string, networkPassphrase: string) =>
+      mockTransactionFromXDR(xdr, networkPassphrase)
+    ),
   },
 }));
 
@@ -112,6 +118,7 @@ describe('StellarClient', () => {
     mockRpcServers.clear();
     mockRpcServerConstructor.mockClear();
     mockHorizonServerConstructor.mockClear();
+    mockTransactionFromXDR.mockReset();
   });
 
   afterEach(() => {
@@ -265,9 +272,9 @@ describe('StellarClient', () => {
     });
 
     it('should throw for unsupported network values', () => {
-      expect(() => new StellarClient({ network: 'invalid' as unknown as 'testnet' })).toThrow(
-        NetworkError
-      );
+      const invalidNetwork = 'invalid' as never;
+
+      expect(() => new StellarClient({ network: invalidNetwork })).toThrow(NetworkError);
     });
   });
 
@@ -293,7 +300,9 @@ describe('StellarClient', () => {
     });
 
     it('should throw for invalid network', () => {
-      expect(() => createStellarClient('invalid' as unknown as 'testnet')).toThrow(NetworkError);
+      const invalidNetwork = 'invalid' as never;
+
+      expect(() => createStellarClient(invalidNetwork)).toThrow(NetworkError);
     });
   });
 
@@ -532,6 +541,29 @@ describe('StellarClient', () => {
 
       await expect(client.getAccount('GABC123')).rejects.toBe(exhausted);
     });
+
+    it('should retry Horizon 429 responses and preserve retry exhaustion context', async () => {
+      const client = new StellarClient({
+        network: 'testnet',
+        retryOptions: { maxRetries: 2, baseDelayMs: 0 },
+      });
+      const horizon = getHorizonMock(client);
+      horizon.loadAccount.mockRejectedValue(
+        Object.assign(new Error('rate limited'), {
+          response: { status: 429 },
+        })
+      );
+
+      await expect(client.getAccount('GABC123')).rejects.toMatchObject({
+        name: 'RetryExhaustedError',
+        attempts: 3,
+        lastError: expect.objectContaining({
+          name: 'NetworkError',
+          statusCode: 429,
+        }),
+      });
+      expect(horizon.loadAccount).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe('submitTransaction', () => {
@@ -552,6 +584,38 @@ describe('StellarClient', () => {
       expect(horizon.submitTransaction).toHaveBeenCalledWith(mockTransaction);
     });
 
+    it('should decode signed transaction XDR before submission', async () => {
+      const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
+      const horizon = getHorizonMock(client);
+      mockTransactionFromXDR.mockReturnValue(mockTransaction);
+      horizon.submitTransaction.mockResolvedValue(mockSubmitResponse);
+
+      await expect(
+        client.submitTransaction('signed-xdr' as unknown as Transaction)
+      ).resolves.toEqual(mockSubmitResponse);
+      expect(mockTransactionFromXDR).toHaveBeenCalledWith(
+        'signed-xdr',
+        'Test SDF Network ; September 2015'
+      );
+      expect(horizon.submitTransaction).toHaveBeenCalledWith(mockTransaction);
+    });
+
+    it('should normalize XDR decode errors before submission', async () => {
+      const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
+      const horizon = getHorizonMock(client);
+      const malformed = new Error('malformed XDR');
+      mockTransactionFromXDR.mockImplementationOnce(() => {
+        throw malformed;
+      });
+
+      await expect(client.submitTransaction('bad-xdr')).rejects.toMatchObject({
+        name: 'NetworkError',
+        message: 'Invalid signed transaction XDR',
+        cause: malformed,
+      });
+      expect(horizon.submitTransaction).not.toHaveBeenCalled();
+    });
+
     it('should throw TransactionError when Horizon returns result codes', async () => {
       const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
       const horizon = getHorizonMock(client);
@@ -568,6 +632,55 @@ describe('StellarClient', () => {
       });
 
       await expect(client.submitTransaction(mockTransaction)).rejects.toThrow(TransactionError);
+    });
+
+    it('should not retry permanent Horizon transaction errors', async () => {
+      const client = new StellarClient({
+        network: 'testnet',
+        retryOptions: { maxRetries: 2, baseDelayMs: 0 },
+      });
+      const horizon = getHorizonMock(client);
+      horizon.submitTransaction.mockRejectedValue({
+        response: {
+          data: {
+            extras: {
+              result_codes: {
+                transaction: 'tx_bad_seq',
+              },
+            },
+          },
+        },
+      });
+
+      await expect(client.submitTransaction(mockTransaction)).rejects.toThrow(TransactionError);
+      expect(horizon.submitTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should preserve Horizon transaction result details on TransactionError', async () => {
+      const client = new StellarClient({ network: 'testnet', retryOptions: fastRetryOptions });
+      const horizon = getHorizonMock(client);
+      horizon.submitTransaction.mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            extras: {
+              result_codes: {
+                transaction: 'tx_failed',
+                operations: ['op_underfunded', 'op_no_destination'],
+              },
+              result_xdr: 'result-xdr',
+            },
+          },
+        },
+      });
+
+      await expect(client.submitTransaction(mockTransaction)).rejects.toMatchObject({
+        name: 'TransactionError',
+        resultCode: 'tx_failed',
+        operationResultCodes: ['op_underfunded', 'op_no_destination'],
+        resultXdr: 'result-xdr',
+        statusCode: 400,
+      });
     });
 
     it('should wrap unexpected submission failures as NetworkError', async () => {

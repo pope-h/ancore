@@ -35,7 +35,16 @@ export interface AddressDisplayProps extends React.HTMLAttributes<HTMLDivElement
  */
 const AddressDisplay = React.forwardRef<HTMLDivElement, AddressDisplayProps>(
   (
-    { address, copyable = true, truncate = 6, label, onCopy, copied: copiedProp, className, ...props },
+    {
+      address,
+      copyable = true,
+      truncate = 6,
+      label,
+      onCopy,
+      copied: copiedProp,
+      className,
+      ...props
+    },
     ref
   ) => {
     const [internalCopied, setInternalCopied] = React.useState(false);

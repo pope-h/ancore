@@ -67,7 +67,7 @@ export function TransactionItem({
           <div className="min-w-0">
             <p className="text-sm font-medium capitalize text-slate-900">{transaction.type}</p>
             <p className="text-xs text-slate-500">
-              {formatAddress(transaction.from)} → {formatAddress(transaction.to)}
+              {formatAddress(transaction.from)} &rarr; {formatAddress(transaction.to)}
             </p>
           </div>
         </div>

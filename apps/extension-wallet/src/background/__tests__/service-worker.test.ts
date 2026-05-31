@@ -123,10 +123,7 @@ function makeAuthState(overrides: Partial<AuthState> = {}): AuthState {
   };
 }
 
-async function loadServiceWorker(
-  authState: AuthState,
-  options: { unlockReturns?: boolean } = {}
-) {
+async function loadServiceWorker(authState: AuthState, options: { unlockReturns?: boolean } = {}) {
   vi.doMock('@/router/AuthGuard', () => ({
     readAuthState: vi.fn(() => authState),
     DEFAULT_AUTH_STATE: makeAuthState(),
@@ -462,15 +459,16 @@ describe('UNLOCK_WALLET', () => {
       }
 
       unlockResult = true;
-      const successResp = await dispatch(chromeMock, 'UNLOCK_WALLET', { password: 'correct-password' });
+      const successResp = await dispatch(chromeMock, 'UNLOCK_WALLET', {
+        password: 'correct-password',
+      });
       expect((successResp.payload as any).success).toBe(true);
 
       unlockResult = false;
       for (let i = 0; i < 4; i += 1) {
-        await dispatch(chromeMock, 'UNLOCK_WALLET', { password: 'wrong-password' });
+        const resp = await dispatch(chromeMock, 'UNLOCK_WALLET', { password: 'wrong-password' });
+        expect((resp.payload as any).retryAfterMs).toBeUndefined();
       }
-      const resp = await dispatch(chromeMock, 'UNLOCK_WALLET', { password: 'wrong-password' });
-      expect((resp.payload as any).retryAfterMs).toBeUndefined();
       _resetHandlers();
     });
 
