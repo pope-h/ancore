@@ -1,7 +1,7 @@
 import { webcrypto } from 'node:crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptSecretKey } from '@ancore/crypto';
-import { SecureStorageManager, type StorageAdapter } from '@ancore/core-sdk';
+import { SecureStorageManager, createStorageAdapter, type StorageAdapter } from '@ancore/core-sdk';
 
 import {
   VaultExportError,
@@ -10,6 +10,21 @@ import {
   verifyVaultPassword,
 } from '../vault-export';
 import { getSharedStorageManager } from '../storage-manager';
+
+vi.mock('@ancore/core-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@ancore/core-sdk')>('@ancore/core-sdk');
+  let adapter: StorageAdapter | null = null;
+
+  return {
+    ...actual,
+    createStorageAdapter: () => {
+      if (!adapter) {
+        adapter = new MockStorageAdapter();
+      }
+      return adapter;
+    },
+  };
+});
 
 if (!globalThis.crypto?.subtle) {
   Object.defineProperty(globalThis, 'crypto', {
@@ -67,7 +82,7 @@ describe('vault-export', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    storage = new MockStorageAdapter();
+    storage = createStorageAdapter() as MockStorageAdapter;
     resetVaultStorageManagerForTests();
   });
 
@@ -80,8 +95,6 @@ describe('vault-export', () => {
 
   it('reveals a private key after password verification', async () => {
     const manager = await seedVaultAccount(storage, { privateKey: PRIVATE_KEY });
-
-    await manager.unlock(PASSWORD);
 
     await expect(
       revealVaultSecret({
