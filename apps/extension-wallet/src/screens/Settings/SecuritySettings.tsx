@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { SecureStorageManager } from '@ancore/crypto';    
+import { SecureStorageManager } from '@ancore/core-sdk';
 import { AlertTriangle, Eye, EyeOff, Check, Copy, Monitor, X } from 'lucide-react';
 import { Button, Input } from '@ancore/ui-kit';
 import {
@@ -8,7 +8,6 @@ import {
   type VaultExportKind,
 } from '../../security/vault-export';
 import { useTransferPolicy } from '../../hooks/useTransferPolicy';
-import { SecureStorageManager } from '@ancore/crypto';
 import { ScreenHeader } from './NetworkSettings';
 import { useDeviceSessionsStore, type DeviceSession } from '../../stores/deviceSessions';
 
@@ -645,11 +644,13 @@ function SecurityMenu({
             }
 
             try {
-              const password = window.prompt('Enter your wallet password to enable password protection for exports');
+              const password = window.prompt(
+                'Enter your wallet password to enable password protection for exports'
+              );
               if (!password) return;
 
               const storage = SecureStorageManager.shared?.() ?? SecureStorageManager;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               const vault: any = await storage.unlock(password);
               if (typeof vault.verifyPassword === 'function') {
                 await vault.verifyPassword(password);
@@ -658,7 +659,7 @@ function SecurityMenu({
               onRequirePasswordForSensitiveActionsChange(true);
             } catch (err) {
               // do not log plaintext; show minimal error
-              // eslint-disable-next-line no-alert
+               
               alert('Incorrect password. Cannot enable password protection.');
             }
           }}

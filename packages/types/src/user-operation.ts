@@ -57,10 +57,7 @@ export const UserOperationSchema = z.object({
     .string()
     .min(1, 'Operation type must not be empty')
     .describe('Operation type (e.g., payment, invoke, manage_data)'),
-  operation: z
-    .object({})
-    .passthrough()
-    .describe('Stellar Operation object'),
+  operation: z.object({}).passthrough().describe('Stellar Operation object'),
   gasLimit: z
     .number()
     .int('Gas limit must be an integer')
@@ -85,20 +82,14 @@ export const TransactionResultSchema = z.object({
       }),
     })
     .describe('Transaction result status'),
-  hash: z
-    .string()
-    .optional()
-    .describe('Transaction hash on Stellar network'),
+  hash: z.string().optional().describe('Transaction hash on Stellar network'),
   ledger: z
     .number()
     .int('Ledger must be an integer')
     .positive('Ledger must be positive')
     .optional()
     .describe('Ledger sequence number where transaction was confirmed'),
-  error: z
-    .string()
-    .optional()
-    .describe('Error message if transaction failed'),
+  error: z.string().optional().describe('Error message if transaction failed'),
   timestamp: z
     .number()
     .int('Timestamp must be an integer')

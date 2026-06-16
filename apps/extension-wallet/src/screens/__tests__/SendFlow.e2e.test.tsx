@@ -67,7 +67,10 @@ describe('Send flow e2e', () => {
     render(<SendScreen service={service} pollIntervalMs={10} />);
 
     expect(screen.getByRole('button', { name: /max/i })).toBeDisabled();
-    await user.type(screen.getByLabelText('Recipient'), 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF');
+    await user.type(
+      screen.getByLabelText('Recipient'),
+      'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
+    );
     expect(screen.getByRole('button', { name: /max/i })).toBeDisabled();
   });
 

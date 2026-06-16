@@ -31,30 +31,21 @@ export enum SessionPermission {
 /**
  * Check if a permission bitmap contains a specific permission.
  */
-export function hasPermission(
-  permissions: number,
-  permission: SessionPermission,
-): boolean {
+export function hasPermission(permissions: number, permission: SessionPermission): boolean {
   return (permissions & permission) === permission;
 }
 
 /**
  * Add a permission to a bitmap.
  */
-export function addPermission(
-  permissions: number,
-  permission: SessionPermission,
-): number {
+export function addPermission(permissions: number, permission: SessionPermission): number {
   return permissions | permission;
 }
 
 /**
  * Remove a permission from a bitmap.
  */
-export function removePermission(
-  permissions: number,
-  permission: SessionPermission,
-): number {
+export function removePermission(permissions: number, permission: SessionPermission): number {
   return permissions & ~permission;
 }
 

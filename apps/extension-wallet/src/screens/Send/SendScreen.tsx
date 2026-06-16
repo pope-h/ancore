@@ -55,8 +55,7 @@ export function SendScreen({ balance, assetDecimals, service, pollIntervalMs }: 
   const { recipients, addRecipient } = useRecentRecipients();
 
   const balanceDisplay = balance !== undefined ? balance.toString() : undefined;
-  const maxDisabled =
-    balance === undefined || balance <= BASE_SEND_RESERVE + DEFAULT_SEND_FEE;
+  const maxDisabled = balance === undefined || balance <= BASE_SEND_RESERVE + DEFAULT_SEND_FEE;
 
   const onMax = async () => {
     const maxAmount = await send.setMaxAmount({ to: form.to, asset: 'XLM' });

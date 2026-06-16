@@ -33,6 +33,7 @@ export default defineConfig({
         rootDir,
         '../../packages/account-abstraction/src/index.ts'
       ),
+      '@ancore/wallet-shared': path.resolve(rootDir, '../../packages/wallet-shared/src/index.ts'),
     },
   },
 });

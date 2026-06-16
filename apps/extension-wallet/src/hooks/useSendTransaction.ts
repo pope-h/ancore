@@ -21,11 +21,7 @@ import {
 } from '@/services/scheduler-client';
 import { resolveHandle as defaultResolveHandle } from '@/services/handle-resolver';
 import type { SimulationState } from '@/screens/Send/SimulationPreview';
-import {
-  computeMaxSendable,
-  BASE_SEND_RESERVE,
-  DEFAULT_SEND_FEE,
-} from '@/utils/amount';
+import { computeMaxSendable, BASE_SEND_RESERVE, DEFAULT_SEND_FEE } from '@/utils/amount';
 
 export type SendStep = 'form' | 'review' | 'confirm' | 'status' | 'scheduled';
 export type TxStatus = 'idle' | 'pending' | 'confirmed' | 'failed';

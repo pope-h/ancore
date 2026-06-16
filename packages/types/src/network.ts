@@ -70,7 +70,7 @@ export function getNetworkProfile(network: AncoreNetwork): NetworkProfile {
 export function validateNetwork(value: string): AncoreNetwork {
   if (!isAncoreNetwork(value)) {
     throw new Error(
-      `Invalid network "${value}". Must be one of: ${Object.keys(NETWORK_PROFILES).join(', ')}`,
+      `Invalid network "${value}". Must be one of: ${Object.keys(NETWORK_PROFILES).join(', ')}`
     );
   }
   return value;

@@ -40,7 +40,18 @@ export interface AmountInputBaseProps extends Omit<
 
 const AmountInputBase = React.forwardRef<HTMLInputElement, AmountInputBaseProps>(
   (
-    { label = 'Amount', error, balance, asset = 'XLM', onMax, maxDisabled, className, id, onChange, ...props },
+    {
+      label = 'Amount',
+      error,
+      balance,
+      asset = 'XLM',
+      onMax,
+      maxDisabled,
+      className,
+      id,
+      onChange,
+      ...props
+    },
     ref
   ) => {
     const inputId = id ?? label.toLowerCase().replace(/\s+/g, '-');
@@ -96,7 +107,7 @@ const AmountInputBase = React.forwardRef<HTMLInputElement, AmountInputBaseProps>
               type="button"
               onClick={onMax}
               disabled={maxDisabled || props.disabled}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded disabled:cursor-not-allowed disabled:text-slate-400"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded disabled:cursor-not-allowed disabled:text-muted-foreground"
             >
               MAX
             </button>

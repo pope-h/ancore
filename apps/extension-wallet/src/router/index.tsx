@@ -195,6 +195,7 @@ function SecondaryLink({ to, children }: { to: string; children: React.ReactNode
 }
 
 function WelcomeScreen() {
+  // DEMO ONBOARDING: sets hasOnboarded without vault keygen. See FREIGHTER_COMPARISON §4 P0.
   return (
     <PageScaffold
       eyebrow="Extension setup"

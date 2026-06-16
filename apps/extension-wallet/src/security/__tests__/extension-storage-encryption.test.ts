@@ -72,7 +72,9 @@ describe('Extension storage encryption audit', () => {
   });
 
   it('never stores plaintext secrets in chrome.storage.local', async () => {
-    const adapter = new ChromeStorageAdapter(mockStorage.area as unknown as chrome.storage.StorageArea);
+    const adapter = new ChromeStorageAdapter(
+      mockStorage.area as unknown as chrome.storage.StorageArea
+    );
     const manager = new SecureStorageManager(adapter);
 
     await manager.unlock(password);

@@ -1,12 +1,13 @@
 import {
+  Account,
   Contract,
   nativeToScVal,
   Transaction,
   TransactionBuilder as StellarTransactionBuilder,
   xdr,
-  ScInt,
 } from '@stellar/stellar-sdk';
-import { NotImplementedError } from './errors';
+
+type SorobanData = xdr.SorobanTransactionData;
 
 export type TransactionBuilderOptions = {
   fee?: string;
@@ -48,7 +49,6 @@ export class TransactionBuilder {
   private readonly timeoutSeconds: number;
   private sorobanData?: SorobanData;
   private simulatedFee?: string;
- 
 
   constructor(source: string, accountContractId: string, options: TransactionBuilderOptions = {}) {
     if (!source || typeof source !== 'string') {
@@ -140,19 +140,12 @@ export class TransactionBuilder {
    * For MVP, returns estimated values based on operation count.
    */
   async simulate(): Promise<SimulationResult> {
-    // In production, this would call:
-    // const server = new Server(rpcUrl);
-    // const result = await server.simulateTransaction(tx);
-    
     const operationCount = this.ops.length;
-    const baseFee = parseInt(this.fee);
+    const baseFee = parseInt(this.fee, 10);
     const estimatedFee = (baseFee * operationCount).toString();
-    
-    // Estimate resource fee (100 stroops per operation as a heuristic)
     const resourceFee = (operationCount * 100).toString();
-    
+
     this.simulatedFee = estimatedFee;
-    this.simulatedResourceFee = resourceFee;
 
     return {
       fee: estimatedFee,
@@ -166,55 +159,54 @@ export class TransactionBuilder {
    * Build the final transaction ready for signing.
    * Must call simulate() first to get accurate fee estimates.
    */
-build(): Transaction {
-  if (!this.simulatedFee) {
-    throw new Error('Must call simulate() before build() to get accurate fee estimates');
+  build(): Transaction {
+    if (!this.simulatedFee) {
+      throw new Error('Must call simulate() before build() to get accurate fee estimates');
+    }
+
+    const account = new Account(this.source, '0');
+    const stellarBuilder = new StellarTransactionBuilder(account, {
+      fee: this.simulatedFee,
+      networkPassphrase: this.networkPassphrase,
+    });
+
+    this.ops.forEach((op) => {
+      stellarBuilder.addOperation(this.buildOperation(op));
+    });
+
+    stellarBuilder.setTimeout(this.timeoutSeconds);
+
+    if (this.sorobanData) {
+      stellarBuilder.setSorobanData(this.sorobanData);
+    }
+
+    return stellarBuilder.build();
   }
 
-  const stellarBuilder = new StellarTransactionBuilder(this.source, {
-    fee: this.simulatedFee,
-    networkPassphrase: this.networkPassphrase,
-  });
+  private buildOperation(op: BuilderOp): xdr.Operation {
+    if (op.type === 'contractExecute') {
+      const contract = new Contract(op.contractId);
+      const args = op.args.map((value) => nativeToScVal(value));
+      return contract.call(op.method, ...args);
+    }
 
-  // Add all operations
-  this.ops.forEach((op) => {
-    stellarBuilder.addOperation(this.buildOperation(op));
-  });
+    if (op.type === 'custom') {
+      return op.operation;
+    }
 
-  // Set timeout
-  stellarBuilder.setTimeout(this.timeoutSeconds);
+    const contract = new Contract(this.accountContractId);
+    if (op.op === 'add') {
+      return contract.call(
+        'add_session_key',
+        nativeToScVal(op.sessionKey),
+        nativeToScVal(op.expiresAt, { type: 'u64' }),
+        nativeToScVal(op.permissions)
+      );
+    }
 
-  // Set Soroban data if available
-  if (this.sorobanData) {
-    stellarBuilder.setSorobanData(this.sorobanData);
+    return contract.call('revoke_session_key', nativeToScVal(op.sessionKey));
   }
 
-  return stellarBuilder.build();
-}
-
- private buildOperation(op: BuilderOp): xdr.Operation {
-  if (op.type === 'contractExecute') {
-    const contract = new Contract(op.contractId);
-    const args = op.args.map((value) => nativeToScVal(value));
-    return contract.call(op.method, ...args).toXDR();
-  }
-
-  if (op.type === 'custom') {
-    return op.operation;
-  }
-
-  const contract = new Contract(this.accountContractId);
-  if (op.op === 'add') {
-    return contract.call(
-      'add_session_key',
-      nativeToScVal(op.sessionKey),
-      nativeToScVal(new ScInt(op.expiresAt)),
-      nativeToScVal(op.permissions)
-    ).toXDR();
-  }
-
-  return contract.call('revoke_session_key', nativeToScVal(op.sessionKey)).toXDR();
-}
   private assertSessionKeyParams(
     sessionKey: string,
     permissions: number[],
